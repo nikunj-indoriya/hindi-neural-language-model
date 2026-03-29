@@ -1,0 +1,62 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Virtual Environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Jupyter Notebooks
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Data (DO NOT PUSH DATASETS)
+# =========================
+data/
+*.csv
+*.tsv
+*.json
+*.pkl
+*.pickle
+
+# =========================
+# Model Checkpoints / Weights
+# =========================
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+models_saved/
+
+# =========================
+# Logs & Outputs
+# =========================
+logs/
+runs/
+*.log
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Colab / Misc
+# =========================
+*.ipynb
