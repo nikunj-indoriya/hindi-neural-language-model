@@ -143,8 +143,8 @@ Output:
 ## How to Run
 
 ```bash
-git clone <repo_url>
-cd project
+git clone https://github.com/nikunj-indoriya/hindi-neural-language-model
+cd hindi-neural-language-model
 pip install -r requirements.txt
 python main.py
 ````
@@ -153,12 +153,4 @@ python main.py
 
 ## Authors
 
-* Nikunj Indoriya
-
----
-
-## License
-
-For academic use (NLP - DSE407)
-
-```
+* Nikunj Indoriya 
