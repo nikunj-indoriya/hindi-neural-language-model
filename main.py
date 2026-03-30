@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 from datasets import load_dataset
 import random
+import re
 
 from src.vocab import Vocab
 from src.dataset import LanguageDataset
@@ -18,27 +19,46 @@ from models.attention_lstm import AttentionLSTM
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ================= DATA =================
-dataset = load_dataset(
-    "ai4bharat/IndicCorpV2",
-    "indiccorp_v2",
-    split="guj_Gujr"
-)
+dataset = load_dataset("cfilt/iitb-english-hindi", split="train")
 
-dataset = dataset.select(range(50000))
+print("Sample:", dataset[0])
 
-texts = [x["text"] for x in dataset]
+# Extract Hindi text
+texts = [x["translation"]["hi"] for x in dataset]
 
+# ================= CLEANING =================
+def clean_text(text):
+    text = re.sub(r'[a-zA-Z]', '', text)
+    text = re.sub(r'[^\u0900-\u097F\s]', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+texts = [clean_text(t) for t in texts]
+
+# Tokenize + filter
 sentences = [t.split() for t in texts if len(t.split()) >= 5]
 
+# Limit AFTER cleaning (IMPORTANT FIX)
+sentences = sentences[:50000]
+
+print("Total usable sentences:", len(sentences))
+print("Sample sentences:", sentences[:3])
+
+# ================= SPLIT =================
 random.shuffle(sentences)
 
 train_s = sentences[:40000]
 val_s = sentences[40000:45000]
 test_s = sentences[45000:50000]
 
+# Safety check
+assert len(train_s) > 0 and len(val_s) > 0, "Dataset too small after cleaning!"
+
 # ================= VOCAB =================
-vocab = Vocab()
+vocab = Vocab(min_freq=2)
 vocab.build(train_s)
+
+print("Vocab size:", len(vocab))
 
 # ================= DATASET =================
 train_ds = LanguageDataset(train_s, vocab)
@@ -58,9 +78,10 @@ for epoch in range(10):
     train_loss = train(model, train_loader, optimizer, criterion, device)
     val_loss, acc, ppl = evaluate(model, val_loader, criterion, device)
 
-    print(f"Epoch {epoch}")
+    print(f"\nEpoch {epoch+1}")
     print(f"Train Loss: {train_loss:.4f}")
     print(f"Val Loss: {val_loss:.4f} | Acc: {acc:.4f} | PPL: {ppl:.2f}")
 
 # ================= GENERATION =================
-print(generate(model, vocab, "હું આજે", device=device))
+print("\nGenerated Text:")
+print(generate(model, vocab, "मैं आज", device=device))
