@@ -9,6 +9,7 @@ from src.dataset import LanguageDataset
 from src.train import train
 from src.evaluate import evaluate
 from src.generate import generate
+from src.plot import plot_loss, plot_final_results
 
 from models.rnn import RNNLM
 from models.lstm import LSTMLM
@@ -82,9 +83,16 @@ for name, model in models.items():
 
     best_ppl = float("inf")
 
-    for epoch in range(5):  # keep small for now
+    train_losses = []
+    val_losses = []
+
+    for epoch in range(5):
         train_loss = train(model, train_loader, optimizer, criterion, device)
         val_loss, acc, ppl = evaluate(model, val_loader, criterion, device)
+
+        # Store losses for plotting
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
 
         print(f"\n{name} Epoch {epoch+1}")
         print(f"Train Loss: {train_loss:.4f}")
@@ -94,6 +102,9 @@ for name, model in models.items():
         if ppl < best_ppl:
             best_ppl = ppl
             torch.save(model.state_dict(), f"{name}.pt")
+
+    # Plot loss curve for this model
+    plot_loss(train_losses, val_losses, name)
 
     # Store final results
     results[name] = {
@@ -110,3 +121,6 @@ for name, model in models.items():
 print("\n================ FINAL RESULTS =================")
 for k, v in results.items():
     print(f"{k}: Acc={v['accuracy']:.4f}, PPL={v['perplexity']:.2f}")
+
+# Plot comparison graphs
+plot_final_results(results)
