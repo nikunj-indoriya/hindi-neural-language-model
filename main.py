@@ -23,7 +23,6 @@ dataset = load_dataset("cfilt/iitb-english-hindi", split="train")
 
 print("Sample:", dataset[0])
 
-# Extract Hindi text
 texts = [x["translation"]["hi"] for x in dataset]
 
 # ================= CLEANING =================
@@ -35,10 +34,7 @@ def clean_text(text):
 
 texts = [clean_text(t) for t in texts]
 
-# Tokenize + filter
 sentences = [t.split() for t in texts if len(t.split()) >= 5]
-
-# Limit AFTER cleaning (IMPORTANT FIX)
 sentences = sentences[:50000]
 
 print("Total usable sentences:", len(sentences))
@@ -50,9 +46,6 @@ random.shuffle(sentences)
 train_s = sentences[:40000]
 val_s = sentences[40000:45000]
 test_s = sentences[45000:50000]
-
-# Safety check
-assert len(train_s) > 0 and len(val_s) > 0, "Dataset too small after cleaning!"
 
 # ================= VOCAB =================
 vocab = Vocab(min_freq=2)
@@ -67,21 +60,53 @@ val_ds = LanguageDataset(val_s, vocab)
 train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
 val_loader = DataLoader(val_ds, batch_size=64)
 
-# ================= MODEL =================
-model = LSTMLM(len(vocab), 256, 512).to(device)
+# ================= MODELS =================
+models = {
+    "RNN": RNNLM(len(vocab), 256, 512),
+    "LSTM": LSTMLM(len(vocab), 256, 512),
+    "GRU": GRULM(len(vocab), 256, 512),
+    "BiLSTM": BiLSTMLM(len(vocab), 256, 512),
+    "AttnLSTM": AttentionLSTM(len(vocab), 256, 512)
+}
 
 criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-# ================= TRAIN =================
-for epoch in range(10):
-    train_loss = train(model, train_loader, optimizer, criterion, device)
-    val_loss, acc, ppl = evaluate(model, val_loader, criterion, device)
+results = {}
 
-    print(f"\nEpoch {epoch+1}")
-    print(f"Train Loss: {train_loss:.4f}")
-    print(f"Val Loss: {val_loss:.4f} | Acc: {acc:.4f} | PPL: {ppl:.2f}")
+# ================= TRAIN LOOP =================
+for name, model in models.items():
+    print(f"\n================ {name} =================")
 
-# ================= GENERATION =================
-print("\nGenerated Text:")
-print(generate(model, vocab, "मैं आज", device=device))
+    model = model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    best_ppl = float("inf")
+
+    for epoch in range(5):  # keep small for now
+        train_loss = train(model, train_loader, optimizer, criterion, device)
+        val_loss, acc, ppl = evaluate(model, val_loader, criterion, device)
+
+        print(f"\n{name} Epoch {epoch+1}")
+        print(f"Train Loss: {train_loss:.4f}")
+        print(f"Val Loss: {val_loss:.4f} | Acc: {acc:.4f} | PPL: {ppl:.2f}")
+
+        # Save best model
+        if ppl < best_ppl:
+            best_ppl = ppl
+            torch.save(model.state_dict(), f"{name}.pt")
+
+    # Store final results
+    results[name] = {
+        "accuracy": acc,
+        "perplexity": ppl
+    }
+
+    # ================= GENERATION =================
+    print("\nSample Generation:")
+    print(generate(model, vocab, "मैं आज", device=device))
+
+
+# ================= FINAL RESULTS =================
+print("\n================ FINAL RESULTS =================")
+for k, v in results.items():
+    print(f"{k}: Acc={v['accuracy']:.4f}, PPL={v['perplexity']:.2f}")
